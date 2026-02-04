@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sunny's Total Lorebook Cascade Destroyer</title>
+
+<style>
+  body {
+    background: #2b2b2b;
+    color: #e0e0e0;
+    font-family: system-ui, sans-serif;
+    margin: 0;
+    padding: 20px;
+  }
+
+  .container {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+  }
+
+  .main {
+    flex: 1;
+    max-width: 900px;
+  }
+
+  h1 {
+    font-size: 1.9rem;
+    margin-bottom: 10px;
+  }
+
+  .info-box {
+    background: #3a3a3a;
+    padding: 14px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 0.95rem;
+    line-height: 1.4;
+  }
+
+  .label {
+    margin: 14px 0 6px;
+    font-weight: 600;
+  }
+
+  .note {
+    font-size: 0.85rem;
+    opacity: 0.8;
+    margin-top: 4px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 140px;
+    background: #1f1f1f;
+    color: #e0e0e0;
+    border: 1px solid #555;
+    border-radius: 6px;
+    padding: 10px;
+    font-family: monospace;
+    resize: vertical;
+  }
+
+  button {
+    margin-top: 14px;
+    padding: 10px 18px;
+    background: #5c7cfa;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95rem;
+  }
+
+  button:hover {
+    background: #4c6ef5;
+  }
+
+  .image-wrap {
+    max-width: 260px;
+  }
+
+  .image-wrap img {
+    width: 100%;
+    border-radius: 12px;
+  }
+
+  @media (max-width: 900px) {
+    .container {
+      flex-direction: column;
+    }
+
+    .image-wrap {
+      max-width: 100%;
+      margin-top: 20px;
+    }
+  }
+</style>
+</head>
+
+<body>
+<div class="container">
+
+  <div class="main">
+    <h1>Sunny's Total Lorebook Cascade Destroyer</h1>
+
+    <div class="info-box">
+      - This will identify all the triggers in your lorebook and wrap ALL the triggers present in the body text<br>
+      - This allows you to use the trigger words without triggering other entries<br>
+      - This will remove all "references" from the lorebook<br>
+      - If you specific entries to remain unwrapped, put their name in the exempt entry box. It has to match exactly. That entry will maintain it's references. 
+      - Export your completed lorebook json to clipboard, paste it here, hit wrap, boom!
+    </div>
+
+    <div class="label">Lorebook JSON</div>
+    <textarea id="input" placeholder="Paste your lorebook JSON here..."></textarea>
+
+    <div class="label">Exempt Entry Names (one per line)</div>
+    <textarea id="exempt" placeholder="Entry names to skip wrapping..."></textarea>
+    <div class="note">Make sure the name matches the entry you want to exempt exactly.</div>
+
+    <button onclick="wrapLorebook()">Wrap Lorebook</button>
+
+    <div class="label">Output JSON</div>
+    <textarea id="output" placeholder="Wrapped lorebook will appear here..."></textarea>
+  </div>
+
+  <div class="image-wrap">
+    <img src="https://i.imgur.com/yeSYFNZ.png" alt="sunflower seeds artwork">
+  </div>
+
+</div>
+
+<script>
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function buildRegex(trigger) {
+  const escaped = escapeRegex(trigger);
+  return new RegExp(
+    "(?<!_)\\b(" + escaped + ")\\b(?!_)",
+    "gi"
+  );
+}
+
+function wrapLorebook() {
+  let data;
+
+  try {
+    data = JSON.parse(document.getElementById("input").value);
+  } catch {
+    alert("Invalid JSON");
+    return;
+  }
+
+  if (!Array.isArray(data.entries)) {
+    alert("No entries found");
+    return;
+  }
+
+  const triggers = [];
+
+  data.entries.forEach(entry => {
+    if (!Array.isArray(entry.keys)) return;
+    entry.keys.forEach(k => {
+      if (k.keyText && !triggers.includes(k.keyText)) {
+        triggers.push(k.keyText);
+      }
+    });
+  });
+
+  triggers.sort((a, b) => b.length - a.length);
+
+  const exemptNames = document
+    .getElementById("exempt")
+    .value
+    .split("\n")
+    .map(n => n.trim().toLowerCase())
+    .filter(Boolean);
+
+  data.entries.forEach(entry => {
+    if (typeof entry.description !== "string") return;
+
+    const entryName = String(entry.name || "").toLowerCase();
+    if (exemptNames.includes(entryName)) return;
+
+    let text = entry.description;
+
+    triggers.forEach(trigger => {
+      const regex = buildRegex(trigger);
+      text = text.replace(regex, "_$1_");
+    });
+
+    entry.description = text;
+  });
+
+  document.getElementById("output").value =
+    JSON.stringify(data, null, 2);
+}
+</script>
+
+</body>
+</html>
